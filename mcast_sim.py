@@ -245,10 +245,13 @@ class Meter:
 
 class Pinger:
     RTT = re.compile(r"time[=<]([\d.]+) ?ms")
-    LOST = re.compile(r"Request timeout|no answer yet")
+    LOST = re.compile(r"Request timeout|Request timed out|no answer yet|unreachable|transmit failed", re.I)
 
     def __init__(self, host: str, interval: float):
-        cmd = ["ping", "-i", str(interval), host]
+        if sys.platform == "win32":
+            cmd = ["ping", "-t", host]  # Windows ping has no interval option; fixed 1 s
+        else:
+            cmd = ["ping", "-i", str(interval), host]
         if sys.platform.startswith("linux"):
             cmd.insert(1, "-O")
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -583,7 +586,7 @@ def main() -> None:
     common.add_argument("--ssids-per-radio", type=int, default=0, help="print beacon airtime for this many SSIDs per radio")
     common.add_argument("--beacon-bytes", type=int, default=300, help="beacon frame size for --ssids-per-radio (default 300)")
     common.add_argument("--ping", metavar="HOST", help="run ping alongside and report loss/latency per interval")
-    common.add_argument("--ping-interval", type=float, default=0.2, help="seconds; short interval keeps macOS Wi-Fi awake (default 0.2)")
+    common.add_argument("--ping-interval", type=float, default=0.2, help="seconds; short interval keeps macOS Wi-Fi awake (default 0.2; Windows always 1)")
     common.add_argument("--real-names", action="store_true",
                         help="use _esphomelib._tcp / _home-assistant._tcp so real HA and ESPHome react; "
                              "real HA will list the fake simtest-esp-* devices as discovered")
